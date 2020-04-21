@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Optional;
 import java.util.Set;
 
 import javax.ws.rs.BadRequestException;
@@ -37,6 +38,7 @@ import com.sequenceiq.periscope.service.AlertService;
 import com.sequenceiq.periscope.service.ClusterService;
 import com.sequenceiq.periscope.service.DateService;
 import com.sequenceiq.periscope.service.NotFoundException;
+import com.sequenceiq.periscope.service.configuration.ClusterProxyConfigurationService;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AlertControllerTest {
@@ -67,6 +69,9 @@ public class AlertControllerTest {
 
     @Mock
     private TimeAlertResponseConverter timeAlertResponseConverter;
+
+    @Mock
+    private ClusterProxyConfigurationService clusterProxyConfigurationService;
 
     private DateService dateService = new DateService();
 
@@ -110,6 +115,7 @@ public class AlertControllerTest {
         Cluster aCluster = getACluster();
         when(alertService.getLoadAlertsForClusterHostGroup(clusterId, "compute")).thenReturn(Set.of());
         when(loadAlertRequestConverter.convert(request)).thenReturn(getALoadAlert());
+        when(clusterProxyConfigurationService.getClusterProxyUrl()).thenReturn(Optional.of("http://clusterproxy"));
         when(clusterService.findById(clusterId)).thenReturn(aCluster);
 
         underTest.createLoadAlert(clusterId, request);
@@ -132,17 +138,18 @@ public class AlertControllerTest {
 
         Cluster aCluster = getACluster();
         when(clusterService.findById(clusterId)).thenReturn(aCluster);
+        when(clusterProxyConfigurationService.getClusterProxyUrl()).thenReturn(Optional.of("http://clusterproxy"));
         when(alertService.getLoadAlertsForClusterHostGroup(clusterId, "compute")).thenReturn(Set.of(getALoadAlert()));
 
         underTest.createLoadAlert(clusterId, request);
     }
 
     @Test(expected = BadRequestException.class)
-    public void testLoadAlertCreateTunnelDirect() {
+    public void testLoadAlertCreateWhenNoClusterProxy() {
         LoadAlertRequest request = getALoadAlertRequest();
 
         Cluster aCluster = getACluster();
-        aCluster.setTunnel(Tunnel.DIRECT);
+        when(clusterProxyConfigurationService.getClusterProxyUrl()).thenReturn(Optional.empty());
         when(clusterService.findById(clusterId)).thenReturn(aCluster);
 
         underTest.createLoadAlert(clusterId, request);

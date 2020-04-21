@@ -45,6 +45,7 @@ import com.sequenceiq.periscope.service.AlertService;
 import com.sequenceiq.periscope.service.ClusterService;
 import com.sequenceiq.periscope.service.DateService;
 import com.sequenceiq.periscope.service.NotFoundException;
+import com.sequenceiq.periscope.service.configuration.ClusterProxyConfigurationService;
 
 @Component
 public class AlertController implements AlertEndpoint {
@@ -84,6 +85,9 @@ public class AlertController implements AlertEndpoint {
 
     @Inject
     private ClusterService clusterService;
+
+    @Inject
+    private ClusterProxyConfigurationService clusterProxyConfigurationService;
 
     public MetricAlertResponse createMetricAlerts(Long clusterId, MetricAlertRequest json) {
         MetricAlert metricAlert = metricAlertRequestConverter.convert(json);
@@ -247,11 +251,9 @@ public class AlertController implements AlertEndpoint {
                     validateAlertForUpdate(clusterId, updateAlert, AlertType.LOAD);
                 }, () -> {
                     validateCloudPlatform(cluster);
-
-                    if (!cluster.getTunnel().useClusterProxy()) {
-                        throw new BadRequestException(String.format("Cluster '%s' is not configured with Cluster Proxy Tunnel, " +
-                                "Cluster Tunnel is %s. Load Based Scaling not supported", cluster.getStackCrn(), cluster.getTunnel()));
-                    }
+                    clusterProxyConfigurationService.getClusterProxyUrl()
+                            .orElseThrow(() -> new BadRequestException(String.format("Cluster '%s' is not configured with Cluster Proxy. " +
+                                                "Load Based Scaling is not supported.", cluster.getStackCrn())));
 
                     String hostGroup = json.getScalingPolicy().getHostGroup();
                     if (!alertService.getLoadAlertsForClusterHostGroup(clusterId, hostGroup).isEmpty()) {
