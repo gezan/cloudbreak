@@ -16,6 +16,10 @@ public enum AuthorizationResourceAction {
     ADMIN_FREEIPA("adminFreeIPA", ActionType.RESOURCE_DEPENDENT),
     CREATE("create", ActionType.RESOURCE_INDEPENDENT),
     GET_KEYTAB("getKeytab", ActionType.RESOURCE_INDEPENDENT),
+    CREATE_IMAGE_CATALOG("createImageCatalog", ActionType.RESOURCE_INDEPENDENT),
+    EDIT_IMAGE_CATALOG("editImageCatalog", ActionType.RESOURCE_DEPENDENT),
+    DESCRIBE_IMAGE_CATALOG("describeImageCatalog", ActionType.RESOURCE_DEPENDENT),
+    DELETE_IMAGE_CATALOG("deleteImageCatalog", ActionType.RESOURCE_DEPENDENT),
     // deprecated actions, please do not use them
     RD_READ("rdRead", ActionType.RESOURCE_DEPENDENT),
     RD_WRITE("rdWrite", ActionType.RESOURCE_DEPENDENT),
