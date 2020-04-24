@@ -56,6 +56,16 @@ import com.sequenceiq.it.cloudbreak.mock.DefaultModel;
 import com.sequenceiq.it.cloudbreak.util.ResponseUtil;
 import com.sequenceiq.it.cloudbreak.util.wait.WaitUtil;
 import com.sequenceiq.it.cloudbreak.util.wait.WaitUtilForMultipleStatuses;
+import com.sequenceiq.it.cloudbreak.util.wait.service.ExceptionChecker;
+import com.sequenceiq.it.cloudbreak.util.wait.service.Result;
+import com.sequenceiq.it.cloudbreak.util.wait.service.WaitResult;
+import com.sequenceiq.it.cloudbreak.util.wait.service.WaitService;
+import com.sequenceiq.it.cloudbreak.util.wait.service.environment.EnvironmentOperationChecker;
+import com.sequenceiq.it.cloudbreak.util.wait.service.environment.EnvironmentTerminationChecker;
+import com.sequenceiq.it.cloudbreak.util.wait.service.environment.EnvironmentWaitObject;
+import com.sequenceiq.it.cloudbreak.util.wait.service.freeipa.FreeIpaOperationChecker;
+import com.sequenceiq.it.cloudbreak.util.wait.service.freeipa.FreeIpaTerminationChecker;
+import com.sequenceiq.it.cloudbreak.util.wait.service.freeipa.FreeIpaWaitObject;
 import com.sequenceiq.sdx.api.model.SdxClusterStatusResponse;
 
 public abstract class TestContext implements ApplicationContextAware {
@@ -99,11 +109,23 @@ public abstract class TestContext implements ApplicationContextAware {
     @Value("${integrationtest.testsuite.cleanUp:true}")
     private boolean cleanUp;
 
+    @Value("${integrationtest.testsuite.pollingInterval:1000}")
+    private long pollingInterval;
+
+    @Value("#{'${integrationtest.cloudProvider}'.equals('MOCK') ? 300 : ${integrationtest.testsuite.maxRetry:2700}}")
+    private int maxRetry;
+
     @Inject
     private CloudProviderProxy cloudProvider;
 
     @Inject
     private CommonCloudProperties commonCloudProperties;
+
+    @Inject
+    private WaitService<EnvironmentWaitObject> environmentWaitService;
+
+    @Inject
+    private WaitService<FreeIpaWaitObject> freeIpaWaitService;
 
     private DefaultModel model;
 
@@ -578,37 +600,57 @@ public abstract class TestContext implements ApplicationContextAware {
         return await(entity, desiredStatuses, runningParameter, -1);
     }
 
-    public FreeIPATestDto await(FreeIPATestDto entity, com.sequenceiq.freeipa.api.v1.freeipa.stack.model.common.Status desiredStatuses,
+    public FreeIPATestDto await(FreeIPATestDto entity, com.sequenceiq.freeipa.api.v1.freeipa.stack.model.common.Status desiredStatus,
             RunningParameter runningParameter, long pollingInterval) {
         checkShutdown();
 
         if (!getExceptionMap().isEmpty() && runningParameter.isSkipOnFail()) {
-            Log.await(LOGGER, String.format("Should be skipped beacause of previous error. await [%s]", desiredStatuses));
+            Log.await(LOGGER, String.format("Should be skipped beacause of previous error. await [%s]", desiredStatus));
             return entity;
         }
         String key = getKeyForAwait(entity, entity.getClass(), runningParameter);
         FreeIPATestDto awaitEntity = get(key);
-        Log.await(LOGGER, String.format("%s for %s", key, desiredStatuses));
+        Log.await(LOGGER, String.format("%s for %s", key, desiredStatus));
         try {
             if (awaitEntity == null) {
                 throw new RuntimeException("Key provided but no result in resource map, key=" + key);
             }
 
             FreeIPAClient freeIPAClient = getMicroserviceClient(FreeIPAClient.class, getWho(runningParameter).getAccessKey());
-            String environmentCrn = awaitEntity.getRequest().getEnvironmentCrn();
-            statuses.putAll(waitUtilSingleStatus.waitAndCheckStatuses(freeIPAClient, environmentCrn, desiredStatuses, pollingInterval));
-            if (!desiredStatuses.equals(com.sequenceiq.freeipa.api.v1.freeipa.stack.model.common.Status.DELETE_COMPLETED)) {
+            String environmentCrn = awaitEntity.getResponse().getEnvironmentCrn();
+            switch (desiredStatus) {
+                case AVAILABLE:
+                case STOPPED:
+                    waitForFreeIpaStatus(freeIPAClient, environmentCrn, desiredStatus, new FreeIpaOperationChecker<>());
+                    break;
+                case DELETE_COMPLETED:
+                    waitForFreeIpaStatus(freeIPAClient, environmentCrn, desiredStatus, new FreeIpaTerminationChecker<>());
+                    break;
+                default:
+                    LOGGER.warn("Wait checker is not implemented yet for the desired environment state '{}' ", desiredStatus);
+                    break;
+            }
+            statuses.putAll(Map.of("status", awaitEntity.getResponse().getStatus().name()));
+            if (!desiredStatus.equals(com.sequenceiq.freeipa.api.v1.freeipa.stack.model.common.Status.DELETE_COMPLETED)) {
                 awaitEntity.refresh(getTestContext(), null);
             }
         } catch (Exception e) {
             if (runningParameter.isLogError()) {
-                LOGGER.error("await [{}] is failed for statuses {}: {}, name: {}", entity, desiredStatuses, ResponseUtil.getErrorMessage(e), entity.getName());
+                LOGGER.error("await [{}] is failed for statuses {}: {}, name: {}", entity, desiredStatus, ResponseUtil.getErrorMessage(e), entity.getName());
                 Log.await(null, String.format("[%s] is failed for statuses %s: %s, name: %s",
-                        entity, desiredStatuses, ResponseUtil.getErrorMessage(e), entity.getName()));
+                        entity, desiredStatus, ResponseUtil.getErrorMessage(e), entity.getName()));
             }
-            getExceptionMap().put("await " + entity + " for desired statuses " + desiredStatuses, e);
+            getExceptionMap().put("await " + entity + " for desired statuses " + desiredStatus, e);
         }
         return entity;
+    }
+
+    private Result<WaitResult, Exception> waitForFreeIpaStatus(FreeIPAClient freeIPAClient, String environmentCrn,
+            com.sequenceiq.freeipa.api.v1.freeipa.stack.model.common.Status desiredStatus, ExceptionChecker<FreeIpaWaitObject> statusChecker) {
+        return freeIpaWaitService.waitWithTimeout(
+                statusChecker,
+                new FreeIpaWaitObject(freeIPAClient, environmentCrn, desiredStatus),
+                pollingInterval, maxRetry, 1);
     }
 
     public EnvironmentTestDto await(EnvironmentTestDto entity, EnvironmentStatus desiredStatuses,
@@ -616,37 +658,57 @@ public abstract class TestContext implements ApplicationContextAware {
         return await(entity, desiredStatuses, runningParameter, -1);
     }
 
-    public EnvironmentTestDto await(EnvironmentTestDto entity, EnvironmentStatus desiredStatuses,
+    public EnvironmentTestDto await(EnvironmentTestDto entity, EnvironmentStatus desiredStatus,
             RunningParameter runningParameter, long pollingInterval) {
         checkShutdown();
 
         if (!getExceptionMap().isEmpty() && runningParameter.isSkipOnFail()) {
-            Log.await(LOGGER, String.format("Should be skipped beacause of previous error. await [%s]", desiredStatuses));
+            Log.await(LOGGER, String.format("Should be skipped beacause of previous error. await [%s]", desiredStatus));
             return entity;
         }
         String key = getKeyForAwait(entity, entity.getClass(), runningParameter);
         EnvironmentTestDto awaitEntity = get(key);
-        Log.await(LOGGER, String.format("%s for %s", key, desiredStatuses));
+        Log.await(LOGGER, String.format("%s for %s", key, desiredStatus));
         try {
             if (awaitEntity == null) {
                 throw new RuntimeException("Key provided but no result in resource map, key=" + key);
             }
 
             EnvironmentClient environmentClient = getMicroserviceClient(EnvironmentClient.class, getWho(runningParameter).getAccessKey());
-            String environmentName = awaitEntity.getResponse().getName();
-            statuses.putAll(waitUtilSingleStatus.waitAndCheckStatuses(environmentClient, environmentName, desiredStatuses, pollingInterval));
-            if (!desiredStatuses.equals(EnvironmentStatus.ARCHIVED)) {
+            String environmentCrn = awaitEntity.getResponse().getCrn();
+            switch (desiredStatus) {
+                case AVAILABLE:
+                case ENV_STOPPED:
+                    waitForEnvironmentStatus(environmentClient, environmentCrn, desiredStatus, new EnvironmentOperationChecker<>());
+                    break;
+                case ARCHIVED:
+                    waitForEnvironmentStatus(environmentClient, environmentCrn, desiredStatus, new EnvironmentTerminationChecker<>());
+                    break;
+                default:
+                    LOGGER.warn("Wait checker is not implemented yet for the desired environment state '{}' ", desiredStatus);
+                    break;
+            }
+            statuses.putAll(Map.of("status", awaitEntity.getResponse().getEnvironmentStatus().name()));
+            if (!desiredStatus.equals(EnvironmentStatus.ARCHIVED)) {
                 awaitEntity.refresh(getTestContext(), null);
             }
         } catch (Exception e) {
             if (runningParameter.isLogError()) {
-                LOGGER.error("await [{}] is failed for statuses {}: {}, name: {}", entity, desiredStatuses, ResponseUtil.getErrorMessage(e), entity.getName());
+                LOGGER.error("await [{}] is failed for statuses {}: {}, name: {}", entity, desiredStatus, ResponseUtil.getErrorMessage(e), entity.getName());
                 Log.await(null, String.format("[%s] is failed for statuses %s: %s, name: %s",
-                        entity, desiredStatuses, ResponseUtil.getErrorMessage(e), entity.getName()));
+                        entity, desiredStatus, ResponseUtil.getErrorMessage(e), entity.getName()));
             }
-            getExceptionMap().put("await " + entity + " for desired statuses " + desiredStatuses, e);
+            getExceptionMap().put("await " + entity + " for desired statuses " + desiredStatus, e);
         }
         return entity;
+    }
+
+    private Result<WaitResult, Exception> waitForEnvironmentStatus(EnvironmentClient environmentClient, String environmentCrn,
+            EnvironmentStatus desiredStatus, ExceptionChecker<EnvironmentWaitObject> statusChecker) {
+        return environmentWaitService.waitWithTimeout(
+                statusChecker,
+                new EnvironmentWaitObject(environmentClient, environmentCrn, desiredStatus),
+                pollingInterval, maxRetry, 1);
     }
 
     public RedbeamsDatabaseServerTestDto await(RedbeamsDatabaseServerTestDto entity, com.sequenceiq.redbeams.api.model.common.Status desiredStatuses,
