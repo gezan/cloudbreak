@@ -21,11 +21,7 @@ Every user who would like to do something regarding a resource should get an Res
 Every time you are introducing a new API, you are creating a new `@Controller` class.
 Controller class should be annotated with this:
 ``` 
-@AuthorizationResource(type = AuthorizationResource.DATALAKE) 
-```
-This specifies the type of the API's resource and used for defining the first part of the `right` during UMS permission check:
-```
-datalake/[action]
+@AuthorizationResource
 ```
 
 ### How can I add resource based authorization for my new API endpoint?
@@ -41,17 +37,17 @@ When you are planning an API endpoint you should specify one of these parameter 
 
 ### Follow these steps to add authorization for the method in controller class
 #### Resource CRN
-- add `@CheckPermissionByResourceCrn(action = ResourceAction.WRITE)` annotation to the method
+- add `@CheckPermissionByResourceCrn(action = [a value from AuthorizationResourceAction])` annotation to the method
 - annotate the resource CRN method parameter with `@ResourceCrn`, the type of the parameter can be a String
 #### Resource name
-- add `@CheckPermissionByResourceName(action = ResourceAction.WRITE)` annotation to the method
+- add `@CheckPermissionByResourceName(action = [a value from AuthorizationResourceAction])` annotation to the method
 - annotate the resource name method parameter with `@ResourceName`, the type of the parameter can be a String
 - implement a `@Service` which is a subclass of [ResourceBasedCrnProvider](src/main/java/com/sequenceiq/authorization/service/ResourceBasedCrnProvider.java) and override `getResourceCrnByResourceName` method
 #### Resource CRN list
-- add `@CheckPermissionByResourceCrnList(action = ResourceAction.WRITE)` annotation to the method
+- add `@CheckPermissionByResourceCrnList(action = [a value from AuthorizationResourceAction])` annotation to the method
 - annotate the resource CRN list method parameter with `@ResourceCrnList`, the type of the parameter can be a String
 #### Resource name list
-- add `@CheckPermissionByResourceNameList(action = ResourceAction.WRITE)` annotation to the method
+- add `@CheckPermissionByResourceNameList(action = [a value from AuthorizationResourceAction])` annotation to the method
 - annotate the resource name list method parameter with `@ResourceNameList`, the type of the parameter can be a String
 - implement a `@Service` which is a subclass of [ResourceBasedCrnProvider](src/main/java/com/sequenceiq/authorization/service/ResourceBasedCrnProvider.java) and override `getResourceCrnListByResourceNameList` method
 #### Resource object
@@ -59,20 +55,18 @@ When you are planning an API endpoint you should specify one of these parameter 
 - annotate the resource object method parameter with `@ResourceObject`, the type of the parameter can be any Object
 - annotate any field of object with `@ResourceObjectField`
 #### environment name
-- add `@CheckPermissionByEnvironmentName(action = ResourceAction.WRITE)` annotation to the method
+- add `@CheckPermissionByEnvironmentName(action = [a value from AuthorizationResourceAction])` annotation to the method
 - annotate the environment name method parameter with `@EnvironmentName`, the type of the parameter can be a String
 - implement a `@Service` which is a subclass of [ResourceBasedCrnProvider](src/main/java/com/sequenceiq/authorization/service/ResourceBasedCrnProvider.java) and override `getResourceCrnByEnvironmentName` method
 #### environment CRN
-- add `@CheckPermissionByEnvironmentCrn(action = ResourceAction.WRITE)` annotation to the method
+- add `@CheckPermissionByEnvironmentCrn(action = [a value from AuthorizationResourceAction])` annotation to the method
 - annotate the environment CRN method parameter with `@EnvironmentCrn`, the type of the parameter can be a String
 - implement a `@Service` which is a subclass of [ResourceBasedCrnProvider](src/main/java/com/sequenceiq/authorization/service/ResourceBasedCrnProvider.java) and override `getResourceCrnByEnvironmentCrn` method
 
 #### Notes
-- `action` parameter should defined explicitly everytime
-- `action` is used to define the second part of the `right` during UMS permission check:
-```
-[resource]/write
-```
+- `action` parameter should defined explicitly every time
+- enum value of `action` contains the `right` used for checkRight call to UMS, please check [AuthorizationResourceAction](../authorization-common-api/src/main/java/com/sequenceiq/authorization/resource/AuthorizationResourceAction.java)
+
 ### Special case: list API endpoints
 
 In case of list API methods, we have to query the list of resources first, then filter it based on permissions.

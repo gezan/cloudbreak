@@ -32,7 +32,6 @@ import com.sequenceiq.authorization.annotation.DisableCheckPermissions;
 import com.sequenceiq.authorization.annotation.ResourceCrn;
 import com.sequenceiq.authorization.annotation.ResourceName;
 import com.sequenceiq.authorization.resource.AuthorizationResourceAction;
-import com.sequenceiq.authorization.resource.AuthorizationResourceType;
 
 @RunWith(MockitoJUnitRunner.class)
 public class CommonPermissionCheckingUtilsTest {
@@ -113,7 +112,6 @@ public class CommonPermissionCheckingUtilsTest {
         Optional<Annotation> classAnnotation = underTest.getClassAnnotation(ExampleAuthorizationResourceClass.class);
         assertTrue(classAnnotation.isPresent());
         assertTrue(classAnnotation.get().annotationType().equals(AuthorizationResource.class));
-        assertEquals(AuthorizationResourceType.CREDENTIAL, ((AuthorizationResource) classAnnotation.get()).type());
     }
 
     @Test
@@ -195,20 +193,20 @@ public class CommonPermissionCheckingUtilsTest {
         underTest.getParameter(proceedingJoinPoint, methodSignature, ResourceCrn.class, String.class);
     }
 
-    @AuthorizationResource(type = AuthorizationResourceType.CREDENTIAL)
+    @AuthorizationResource
     private static class ExampleAuthorizationResourceClass {
 
-        @CheckPermissionByAccount(action = AuthorizationResourceAction.READ)
+        @CheckPermissionByAccount(action = AuthorizationResourceAction.ENVIRONMENT_READ)
         public void exampleMethodWithParamAnnotation(@ResourceName String name, String other) {
             LOGGER.info(name + other);
         }
 
-        @CheckPermissionByAccount(action = AuthorizationResourceAction.READ)
+        @CheckPermissionByAccount(action = AuthorizationResourceAction.ENVIRONMENT_READ)
         public void exampleMethodWithoutParamAnnotation(String name, String other) {
             LOGGER.info(name + other);
         }
 
-        @CheckPermissionByAccount(action = AuthorizationResourceAction.READ)
+        @CheckPermissionByAccount(action = AuthorizationResourceAction.ENVIRONMENT_READ)
         public void exampleMethodWithTooManyParamAnnotation(@ResourceCrn String name, @ResourceCrn String other) {
             LOGGER.info(name + other);
         }

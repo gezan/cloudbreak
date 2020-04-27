@@ -4,11 +4,13 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -19,8 +21,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Lists;
-import com.sequenceiq.authorization.annotation.DisableCheckPermissions;
 import com.sequenceiq.authorization.annotation.AuthorizationResource;
+import com.sequenceiq.authorization.annotation.DisableCheckPermissions;
 import com.sequenceiq.authorization.resource.AuthorizationResourceAction;
 import com.sequenceiq.authorization.resource.AuthorizationResourceType;
 
@@ -35,22 +37,39 @@ public class CommonPermissionCheckingUtils {
     @Inject
     private UmsResourceAuthorizationService umsResourceAuthorizationService;
 
-    public void checkPermissionForUser(AuthorizationResourceType resource, AuthorizationResourceAction action, String userCrn) {
-        umsAccountAuthorizationService.checkRightOfUser(userCrn, resource, action);
+    @Inject
+    private List<ResourceBasedCrnProvider> resourceBasedCrnProviders;
+
+    @Inject
+    private UmsRightProvider umsRightProvider;
+
+    private final Map<AuthorizationResourceType, ResourceBasedCrnProvider> resourceBasedCrnProviderMap = new HashMap<>();
+
+    @PostConstruct
+    public void populateResourceBasedCrnProviderMap() {
+        resourceBasedCrnProviders.forEach(resourceBasedCrnProvider ->
+                resourceBasedCrnProviderMap.put(resourceBasedCrnProvider.getResourceType(), resourceBasedCrnProvider));
     }
 
-    public void checkPermissionForUserOnResource(AuthorizationResourceType resource, AuthorizationResourceAction action, String userCrn, String resourceCrn) {
-        umsResourceAuthorizationService.checkRightOfUserOnResource(userCrn, resource, action, resourceCrn);
+    public ResourceBasedCrnProvider getResourceBasedCrnProvider(AuthorizationResourceAction action) {
+        AuthorizationResourceType resourceType = umsRightProvider.getResourceType(action);
+        return resourceBasedCrnProviderMap.get(resourceType);
     }
 
-    public void checkPermissionForUserOnResources(AuthorizationResourceType resource, AuthorizationResourceAction action,
-            String userCrn, Collection<String> resourceCrns) {
-        umsResourceAuthorizationService.checkRightOfUserOnResources(userCrn, resource, action, resourceCrns);
+    public void checkPermissionForUser(AuthorizationResourceAction action, String userCrn) {
+        umsAccountAuthorizationService.checkRightOfUser(userCrn, action);
     }
 
-    public Map<String, Boolean> getPermissionsForUserOnResources(AuthorizationResourceType resource, AuthorizationResourceAction action,
-            String userCrn, List<String> resourceCrns) {
-        return umsResourceAuthorizationService.getRightOfUserOnResources(userCrn, resource, action, resourceCrns);
+    public void checkPermissionForUserOnResource(AuthorizationResourceAction action, String userCrn, String resourceCrn) {
+        umsResourceAuthorizationService.checkRightOfUserOnResource(userCrn, action, resourceCrn);
+    }
+
+    public void checkPermissionForUserOnResources(AuthorizationResourceAction action, String userCrn, Collection<String> resourceCrns) {
+        umsResourceAuthorizationService.checkRightOfUserOnResources(userCrn, action, resourceCrns);
+    }
+
+    public Map<String, Boolean> getPermissionsForUserOnResources(AuthorizationResourceAction action, String userCrn, List<String> resourceCrns) {
+        return umsResourceAuthorizationService.getRightOfUserOnResources(userCrn, action, resourceCrns);
     }
 
     public Object proceed(ProceedingJoinPoint proceedingJoinPoint, MethodSignature methodSignature, long startTime) {

@@ -7,7 +7,6 @@ import org.springframework.stereotype.Controller;
 import com.sequenceiq.authorization.annotation.AuthorizationResource;
 import com.sequenceiq.authorization.annotation.CheckPermissionByAccount;
 import com.sequenceiq.authorization.resource.AuthorizationResourceAction;
-import com.sequenceiq.authorization.resource.AuthorizationResourceType;
 import com.sequenceiq.cloudbreak.auth.ThreadBasedUserCrnProvider;
 import com.sequenceiq.datalake.service.sdx.SdxUpgradeService;
 import com.sequenceiq.datalake.service.upgrade.SdxClusterUpgradeService;
@@ -16,7 +15,7 @@ import com.sequenceiq.sdx.api.model.SdxUpgradeRequest;
 import com.sequenceiq.sdx.api.model.SdxUpgradeResponse;
 
 @Controller
-@AuthorizationResource(type = AuthorizationResourceType.DATALAKE)
+@AuthorizationResource
 public class SdxUpgradeController implements SdxUpgradeEndpoint {
 
     @Inject
@@ -26,7 +25,7 @@ public class SdxUpgradeController implements SdxUpgradeEndpoint {
     private SdxClusterUpgradeService sdxClusterUpgradeService;
 
     @Override
-    @CheckPermissionByAccount(action = AuthorizationResourceAction.WRITE)
+    @CheckPermissionByAccount(action = AuthorizationResourceAction.DATALAKE_WRITE)
     public SdxUpgradeResponse upgradeClusterByName(String clusterName, SdxUpgradeRequest upgradeSdxClusterRequest) {
         if (Boolean.TRUE.equals(upgradeSdxClusterRequest.isDryRun())) {
             return sdxClusterUpgradeService.checkForClusterUpgradeByName(clusterName, upgradeSdxClusterRequest);
@@ -40,7 +39,7 @@ public class SdxUpgradeController implements SdxUpgradeEndpoint {
     }
 
     @Override
-    @CheckPermissionByAccount(action = AuthorizationResourceAction.WRITE)
+    @CheckPermissionByAccount(action = AuthorizationResourceAction.DATALAKE_WRITE)
     public SdxUpgradeResponse upgradeClusterByCrn(String clusterCrn, SdxUpgradeRequest upgradeSdxClusterRequest) {
         if (Boolean.TRUE.equals(upgradeSdxClusterRequest.isDryRun())) {
             String userCrn = ThreadBasedUserCrnProvider.getUserCrn();
