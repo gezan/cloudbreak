@@ -29,6 +29,7 @@ import com.sequenceiq.environment.environment.domain.Environment;
 import com.sequenceiq.environment.environment.domain.EnvironmentTags;
 import com.sequenceiq.environment.network.v1.converter.EnvironmentNetworkConverter;
 import com.sequenceiq.environment.parameters.dao.domain.AwsParameters;
+import com.sequenceiq.environment.parameters.dao.domain.AzureParameters;
 import com.sequenceiq.environment.parameters.v1.converter.EnvironmentParametersConverter;
 import com.sequenceiq.environment.tags.domain.AccountTag;
 import com.sequenceiq.environment.tags.service.AccountTagService;
@@ -205,6 +206,11 @@ public class EnvironmentDtoConverter {
                                 .withPercentage(awsParameters.getFreeIpaSpotPercentage())
                                 .build())
                         .build());
+            }
+        } else if (environment.getCloudPlatform().equals(CloudPlatform.AZURE.name())) {
+            AzureParameters azureParameters = (AzureParameters) environment.getParameters();
+            if (Objects.nonNull(azureParameters)) {
+                // TODO: complete
             }
         }
 

@@ -33,6 +33,7 @@ import com.sequenceiq.environment.environment.validation.EnvironmentValidatorSer
 import com.sequenceiq.environment.network.NetworkService;
 import com.sequenceiq.environment.network.dao.domain.BaseNetwork;
 import com.sequenceiq.environment.parameters.dao.domain.AwsParameters;
+import com.sequenceiq.environment.parameters.dao.domain.AzureParameters;
 import com.sequenceiq.environment.parameters.dao.domain.BaseParameters;
 import com.sequenceiq.environment.parameters.dto.ParametersDto;
 import com.sequenceiq.environment.parameters.service.ParametersService;
@@ -289,6 +290,9 @@ public class EnvironmentModificationService {
                     AwsParameters awsOriginalParameters = (AwsParameters) originalParameters;
                     parametersDto.getAwsParametersDto().setFreeIpaSpotPercentage(awsOriginalParameters.getFreeIpaSpotPercentage());
                     validateAwsParameters(environment, parametersDto);
+                } else if (originalParameters instanceof AzureParameters) {
+                    AzureParameters azureOriginalParameters = (AzureParameters) originalParameters;
+                    // TODO: complete?
                 }
             }
             BaseParameters parameters = parametersService.saveParameters(environment, parametersDto);
