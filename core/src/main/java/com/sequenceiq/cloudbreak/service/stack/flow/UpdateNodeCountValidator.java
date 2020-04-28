@@ -101,6 +101,9 @@ public class UpdateNodeCountValidator {
         if (instanceGroup == null) {
             throw new BadRequestException(format("Stack '%s' does not have an instanceGroup named '%s'.", stack.getName(), instanceGroupName));
         }
+        if (!instanceGroup.getScalingMode().isManuallyScalable()) {
+            throw new BadRequestException(format("Instance group '%s' in stack '%s' is not enabled to scale", instanceGroupName, stack.getName()));
+        }
     }
 
     public void validateScalingAdjustment(InstanceGroupAdjustmentV4Request instanceGroupAdjustmentJson, Stack stack) {

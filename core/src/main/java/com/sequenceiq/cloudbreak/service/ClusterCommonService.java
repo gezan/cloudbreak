@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
+import com.sequenceiq.cloudbreak.domain.stack.instance.InstanceGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -119,6 +120,11 @@ public class ClusterCommonService {
         if (hostGroup.isEmpty()) {
             throw new BadRequestException(String.format("Host group '%s' not found or not member of the cluster '%s'",
                     updateJson.getHostGroupAdjustment().getHostGroup(), stack.getName()));
+        }
+        InstanceGroup instanceGroup = hostGroup.get().getInstanceGroup();
+        if (!instanceGroup.getScalingMode().isManuallyScalable()) {
+            throw new BadRequestException(String.format("Instance group '%s' in stack '%s' is not enabled to scale",
+                    instanceGroup.getGroupName(), stack.getName()));
         }
         if (blueprintService.isClouderaManagerTemplate(blueprint)) {
             cmTemplateValidator.validateHostGroupScalingRequest(blueprint, hostGroup.get(),

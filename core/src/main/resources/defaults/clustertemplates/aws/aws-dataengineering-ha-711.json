@@ -16,6 +16,7 @@
       "name": "manager",
       "type": "GATEWAY",
       "recoveryMode": "MANUAL",
+      "scalingMode": "NONE",
       "template": {
         "aws": {},
         "instanceType": "m5.2xlarge",
@@ -36,6 +37,7 @@
         "name": "compute",
         "type": "CORE",
         "recoveryMode": "MANUAL",
+        "scalingMode": "MANUAL",
         "template": {
           "aws": {},
           "instanceType": "m5.2xlarge",
@@ -56,6 +58,7 @@
         "name": "gateway",
         "type": "CORE",
         "recoveryMode": "MANUAL",
+        "scalingMode": "MANUAL",
         "template": {
           "aws": {},
           "instanceType": "m5.2xlarge",
@@ -76,6 +79,7 @@
         "name": "worker",
         "type": "CORE",
         "recoveryMode": "MANUAL",
+        "scalingMode": "MANUAL",
         "template": {
           "aws": {},
           "instanceType": "m5.2xlarge",
@@ -96,6 +100,7 @@
         "name": "master",
         "type": "CORE",
         "recoveryMode": "MANUAL",
+        "scalingMode": "NONE",
         "template": {
           "aws": {},
           "instanceType": "m5.2xlarge",

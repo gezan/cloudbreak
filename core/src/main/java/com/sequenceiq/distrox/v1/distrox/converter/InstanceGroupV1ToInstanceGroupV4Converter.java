@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
+import com.sequenceiq.common.api.type.ScalingMode;
 import org.springframework.stereotype.Component;
 
 import com.google.common.base.Strings;
@@ -54,6 +55,11 @@ public class InstanceGroupV1ToInstanceGroupV4Converter {
         response.setRecipeNames(source.getRecipeNames());
         response.setAws(getIfNotNull(source.getAws(), instanceGroupParameterConverter::convert));
         response.setAzure(getIfNotNull(source.getAzure(), instanceGroupParameterConverter::convert));
+        if (source.getScalingMode() == null) {
+            response.setScalingMode(ScalingMode.UNSPECIFIED);
+        } else {
+            response.setScalingMode(source.getScalingMode());
+        }
         return response;
     }
 
@@ -67,6 +73,11 @@ public class InstanceGroupV1ToInstanceGroupV4Converter {
         response.setRecipeNames(source.getRecipeNames());
         response.setAws(getIfNotNull(source.getAws(), instanceGroupParameterConverter::convert));
         response.setAzure(getIfNotNull(source.getAzure(), instanceGroupParameterConverter::convert));
+        if (source.getScalingMode() == null) {
+            response.setScalingMode(ScalingMode.UNSPECIFIED);
+        } else {
+            response.setScalingMode(source.getScalingMode());
+        }
         return response;
     }
 
