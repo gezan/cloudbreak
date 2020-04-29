@@ -45,3 +45,11 @@ generate_host_id:
   cmd.run:
     - name: /opt/scripts/generate-host-id.sh
     - shell: /bin/bash
+
+set_service_uids:
+  cmd.run:
+    - name: /opt/cloudera/cm-agent/service/inituids/set-service-uids.py && echo $(date +%Y-%m-%d:%H:%M:%S) >> /var/log/set-service-uids-executed
+    - cwd: /opt/cloudera/cm-agent/service/inituids
+    - failhard: True
+    - onlyif: test -f /opt/cloudera/cm-agent/service/inituids/set-service-uids.py
+    - unless: test -f /var/log/set-service-uids-executed
