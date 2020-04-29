@@ -1,6 +1,7 @@
 package com.sequenceiq.datalake.service.sdx;
 
 import static com.sequenceiq.cloudbreak.exception.NotFoundException.notFound;
+import static com.sequenceiq.environment.api.v1.environment.model.response.EnvironmentStatus.ENV_STOPPED;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -68,7 +69,9 @@ public class EnvironmentService {
                             return AttemptResults.finishWith(environment);
                         } else {
                             if (environment.getEnvironmentStatus().isFailed()) {
-                                return AttemptResults.breakFor("Environment creation failed " + sdxCluster.getEnvName());
+                                return AttemptResults.breakFor("Environment creation failed: " + sdxCluster.getEnvName());
+                            } else if (ENV_STOPPED.equals(environment.getEnvironmentStatus())) {
+                                return AttemptResults.breakFor("Environment is in stopped status: " + sdxCluster.getEnvName());
                             } else {
                                 return AttemptResults.justContinue();
                             }
